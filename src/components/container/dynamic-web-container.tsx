@@ -75,13 +75,14 @@ export default function DynamicWebContainer({
         let isCompiling = false;
         let isFirstRequest = false;
         let isFirstRecompile = true;
+        let isServerReady = false;
         let compilationStartTime: number | null = null;
 
         serverProcess.output.pipeTo(new WritableStream({
           write(data) {
             terminalInstanceRef.current?.write(data);
-            
-            if (data.includes('Starting...') && !isStarting) {
+
+            if (data.includes('Starting...') && !isStarting && !isServerReady) {
               isStarting = true;
               setLoadingState('starting');
             }
@@ -118,8 +119,10 @@ export default function DynamicWebContainer({
         }));
 
         webcontainerInstance.on("server-ready", (port, url) => {
+          isServerReady = true;
           terminalInstanceRef.current?.writeln(`Server is ready at ${url}`)
           if (iframeRef.current) iframeRef.current.src = url
+          setLoadingState('ready')
         })
         
         const resizeObserver = new ResizeObserver(() => {
