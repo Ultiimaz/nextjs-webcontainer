@@ -21,7 +21,8 @@ interface DynamicWebContainerProps {
   setWebcontainerInstance: (instance: WebContainer | null) => void;
 }
 
-let webcontainerInstance: WebContainer;
+let webcontainerInstance: WebContainer | null = null;
+let isBooting = false;
 
 export default function DynamicWebContainer({
   textareaRef,
@@ -39,13 +40,37 @@ export default function DynamicWebContainer({
 
   useEffect(() => {
     const initializeWebContainer = async () => {
-      if (hasBooted.current) return
+      // Check if already booted or currently booting
+      if (webcontainerInstance || isBooting) {
+        console.log('WebContainer already booted or booting, skipping...');
+        if (webcontainerInstance) {
+          setWebcontainerInstance(webcontainerInstance);
+          setLoadingState('ready');
+        }
+        return;
+      }
+
+      if (hasBooted.current) {
+        console.log('Component already initialized, skipping...');
+        return;
+      }
       hasBooted.current = true
 
-      if (!textareaRef.current || !iframeRef.current || !terminalRef.current) return
+      if (!textareaRef.current || !iframeRef.current || !terminalRef.current) {
+        console.error('Refs not available:', {
+          textarea: !!textareaRef.current,
+          iframe: !!iframeRef.current,
+          terminal: !!terminalRef.current
+        });
+        hasBooted.current = false;
+        return;
+      }
+
+      console.log('Starting WebContainer initialization...');
+      isBooting = true;
 
       fitAddonRef.current = new FitAddon()
-      terminalInstanceRef.current = new Terminal({ 
+      terminalInstanceRef.current = new Terminal({
         convertEol: true,
         theme: {
           background: isDarkMode ? '#1a202c' : '#ffffff',
@@ -63,8 +88,12 @@ export default function DynamicWebContainer({
         }
 
         setLoadingState('booting');
+        console.log('Calling WebContainer.boot()...');
         webcontainerInstance = await WebContainer.boot()
+        console.log('WebContainer booted successfully!');
+        isBooting = false;
         await webcontainerInstance.mount(files)
+        console.log('Files mounted successfully!');
         setWebcontainerInstance(webcontainerInstance)
 
         setLoadingState('installing');
@@ -152,12 +181,13 @@ export default function DynamicWebContainer({
         return () => {
           resizeObserver.disconnect()
           terminalInstanceRef.current?.dispose()
-          webcontainerInstance?.teardown()
-          hasBooted.current = false
+          // Don't teardown or reset - let WebContainer persist
         }
       } catch (error) {
         console.error('Failed to boot WebContainer:', error)
         setLoadingState('error');
+        isBooting = false;
+        hasBooted.current = false;
         terminalInstanceRef.current?.writeln(`Error: ${error}`)
       }
     }
@@ -166,18 +196,36 @@ export default function DynamicWebContainer({
   }, [isDarkMode, setLoadingState, iframeRef, terminalRef, textareaRef])
 
   useEffect(() => {
-    const handleTextareaInput = (e: Event) => {
-      if (e.currentTarget instanceof HTMLTextAreaElement) {
-        writeIndexTSX(selectedFile, e.currentTarget.value);
+    const textarea = textareaRef.current;
+    let timeoutId: NodeJS.Timeout;
+
+    const handleTextareaInput = async (e: Event) => {
+      if (e.currentTarget instanceof HTMLTextAreaElement && webcontainerInstance) {
+        const content = e.currentTarget.value;
+
+        // Debounce file writes to avoid excessive updates
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(async () => {
+          try {
+            await webcontainerInstance.fs.writeFile(selectedFile, content);
+          } catch (error) {
+            console.error('Error writing file:', error);
+          }
+        }, 300);
       }
     };
 
-    textareaRef.current?.addEventListener("input", handleTextareaInput);
+    if (textarea && webcontainerInstance) {
+      textarea.addEventListener("input", handleTextareaInput);
+    }
 
     return () => {
-      textareaRef.current?.removeEventListener("input", handleTextareaInput);
+      clearTimeout(timeoutId);
+      if (textarea) {
+        textarea.removeEventListener("input", handleTextareaInput);
+      }
     };
-  }, [textareaRef, selectedFile]);
+  }, [textareaRef, selectedFile, webcontainerInstance]);
 
   async function installDependencies(terminal: Terminal, instance: WebContainer) {
     const installProcess = await instance.spawn('npm', ['install'])
@@ -234,10 +282,6 @@ export default function DynamicWebContainer({
     })
 
     return shellProcess
-  }
-
-  async function writeIndexTSX(selectedFile: string, content: string) {
-    await webcontainerInstance?.fs.writeFile(selectedFile, content);
   }
 
   return null;

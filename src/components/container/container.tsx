@@ -9,7 +9,8 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable"
-import { Code, Play, TerminalIcon, Sun, Moon, Github, Twitter } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Code, Play, TerminalIcon, Sun, Moon, Github, Twitter, Files, Monitor } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { WebContainerLoader } from '@/components/container/loader'
 import dynamic from 'next/dynamic'
@@ -93,76 +94,100 @@ export default function Container() {
         </div>
       </header>
       <main className="flex-grow flex flex-col p-4 space-y-4">
-        <ResizablePanelGroup direction="vertical" className="flex-grow rounded-lg overflow-hidden">
-          <ResizablePanel defaultSize={75}>
-            <ResizablePanelGroup direction="horizontal">
-              {/* AI Chat Panel */}
-              <ResizablePanel defaultSize={20} minSize={15}>
-                <AIChat webcontainerInstance={webcontainerInstance} />
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              {/* File Explorer Panel */}
-              <ResizablePanel defaultSize={15} minSize={10}>
-                {webcontainerInstance && (
-                  <FileExplorer
-                    isDarkMode={isDarkMode}
-                    webcontainerInstance={webcontainerInstance}
-                    onFileSelect={handleFileSelect}
-                  />
-                )}
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              {/* Editor Panel */}
-              <ResizablePanel defaultSize={35} minSize={20}>
-                <motion.div
-                  className={`h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-none shadow-md overflow-hidden transition-colors duration-300`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <div className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'} p-2 flex justify-between items-center transition-colors duration-300`}>
-                    <span className="flex items-center"><Code size={18} className="mr-2" /> Editor</span>
-                  </div>
-                  <Textarea
-                    ref={textareaRef}
-                    className={`w-full h-[calc(100%-40px)] rounded-t-none rounded-br-none p-4 border-none font-mono text-sm resize-none focus:outline-none ${
-                      isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-800'
-                    } transition-colors duration-300`}
-                  />
-                </motion.div>
-              </ResizablePanel>
-              <ResizableHandle withHandle />
-              {/* Preview Panel */}
-              <ResizablePanel defaultSize={30} minSize={20}>
-                <motion.div
-                  className={`h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg rounded-bl-none rounded-tl-none shadow-md overflow-hidden transition-colors duration-300`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 }}
-                >
-                  <div className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'} p-2 flex items-center transition-colors duration-300`}>
-                    <Play size={18} className="mr-2" /> Preview
-                  </div>
-                  {loadingState !== 'ready' && (
-                      <WebContainerLoader state={loadingState} />
-                  )}
-                  <iframe ref={iframeRef} className="w-full h-[calc(100%-40px)]" />
-                </motion.div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
+        <ResizablePanelGroup direction="horizontal" className="flex-grow rounded-lg overflow-hidden">
+          {/* AI Chat Panel - Full Height */}
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={35}>
+            <AIChat webcontainerInstance={webcontainerInstance} />
           </ResizablePanel>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize={25}>
-            <div className={`h-full flex flex-col ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md overflow-hidden transition-colors duration-300`}>
-              <div
-                className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'} p-2 flex justify-between items-center transition-colors duration-300`}
-              >
-                <span className="flex items-center"><TerminalIcon size={18} className="mr-2" /> Terminal</span>
+          {/* Tabbed Panel - Files or Preview */}
+          <ResizablePanel defaultSize={80} minSize={50}>
+            <Tabs defaultValue="preview" className="h-full flex flex-col">
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} px-4 pt-3 pb-1`}>
+                <TabsList className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                  <TabsTrigger value="preview" className="flex items-center gap-2">
+                    <Monitor size={16} />
+                    Preview
+                  </TabsTrigger>
+                  <TabsTrigger value="files" className="flex items-center gap-2">
+                    <Files size={16} />
+                    Files
+                  </TabsTrigger>
+                </TabsList>
               </div>
-              <div className="flex-grow overflow-hidden">
-                <div ref={terminalRef} className="h-full w-full"></div>
-              </div>
-            </div>
+
+              {/* Preview Tab Content */}
+              <TabsContent value="preview" className="flex-1 m-0 h-full" forceMount>
+                <ResizablePanelGroup direction="vertical" className="h-full data-[state=inactive]:hidden">
+                  {/* Preview Panel */}
+                  <ResizablePanel defaultSize={60} minSize={30}>
+                    <motion.div
+                      className={`h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-md overflow-hidden transition-colors duration-300 relative`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <iframe ref={iframeRef} className="w-full h-full" />
+                      {loadingState !== 'ready' && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-inherit z-10">
+                          <WebContainerLoader state={loadingState} />
+                        </div>
+                      )}
+                    </motion.div>
+                  </ResizablePanel>
+                  <ResizableHandle withHandle />
+                  {/* Terminal Panel */}
+                  <ResizablePanel defaultSize={40} minSize={20}>
+                    <div className={`h-full flex flex-col ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-md overflow-hidden transition-colors duration-300`}>
+                      <div
+                        className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'} p-2 flex justify-between items-center transition-colors duration-300`}
+                      >
+                        <span className="flex items-center"><TerminalIcon size={18} className="mr-2" /> Terminal</span>
+                      </div>
+                      <div className="flex-grow overflow-hidden">
+                        <div ref={terminalRef} className="h-full w-full"></div>
+                      </div>
+                    </div>
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              </TabsContent>
+
+              {/* Files Tab Content */}
+              <TabsContent value="files" className="flex-1 m-0 h-full data-[state=inactive]:hidden" forceMount>
+                <ResizablePanelGroup direction="horizontal" className="h-full">
+                  {/* File Explorer */}
+                  <ResizablePanel defaultSize={30} minSize={20}>
+                    {webcontainerInstance && (
+                      <FileExplorer
+                        isDarkMode={isDarkMode}
+                        webcontainerInstance={webcontainerInstance}
+                        onFileSelect={handleFileSelect}
+                      />
+                    )}
+                  </ResizablePanel>
+                  <ResizableHandle withHandle />
+                  {/* Editor */}
+                  <ResizablePanel defaultSize={70} minSize={40}>
+                    <motion.div
+                      className={`h-full ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-md overflow-hidden transition-colors duration-300`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                    >
+                      <div className={`${isDarkMode ? 'bg-gray-700' : 'bg-gray-200'} p-2 flex justify-between items-center transition-colors duration-300`}>
+                        <span className="flex items-center"><Code size={18} className="mr-2" /> Editor</span>
+                      </div>
+                      <Textarea
+                        ref={textareaRef}
+                        className={`w-full h-[calc(100%-40px)] rounded-none p-4 border-none font-mono text-sm resize-none focus:outline-none ${
+                          isDarkMode ? 'bg-gray-800 text-gray-200' : 'bg-white text-gray-800'
+                        } transition-colors duration-300`}
+                      />
+                    </motion.div>
+                  </ResizablePanel>
+                </ResizablePanelGroup>
+              </TabsContent>
+            </Tabs>
           </ResizablePanel>
         </ResizablePanelGroup>
       </main>
