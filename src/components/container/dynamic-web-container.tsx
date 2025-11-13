@@ -6,6 +6,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { files } from '@/components/container/files'
 import '@xterm/xterm/css/xterm.css'
+import { terminalMonitor } from '@/lib/terminal-monitor'
 
 type LoadingState = 'booting' | 'installing' | 'starting' | 'compiling' | 'ready' | 'error';
 
@@ -56,6 +57,11 @@ export default function DynamicWebContainer({
       fitAddonRef.current.fit()
 
       try {
+        // Expose terminal monitor globally
+        if (typeof window !== 'undefined') {
+          (window as any).terminalMonitor = terminalMonitor;
+        }
+
         setLoadingState('booting');
         webcontainerInstance = await WebContainer.boot()
         await webcontainerInstance.mount(files)
@@ -180,6 +186,10 @@ export default function DynamicWebContainer({
         new WritableStream({
           write(data) {
             terminal.write(data)
+            // Also capture to terminal monitor
+            if (typeof window !== 'undefined' && (window as any).terminalMonitor) {
+              (window as any).terminalMonitor.write(data);
+            }
           },
         })
       )
@@ -210,6 +220,10 @@ export default function DynamicWebContainer({
       new WritableStream({
         write(data) {
           terminal.write(data)
+          // Also capture to terminal monitor
+          if (typeof window !== 'undefined' && (window as any).terminalMonitor) {
+            (window as any).terminalMonitor.write(data);
+          }
         },
       })
     )
