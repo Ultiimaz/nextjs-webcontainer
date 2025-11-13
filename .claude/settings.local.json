@@ -8,7 +8,11 @@
       "Bash(timeout /t 10 /nobreak)",
       "Bash(nul)",
       "mcp__ide__getDiagnostics",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node -c:*)"
     ],
     "deny": [],
     "ask": []

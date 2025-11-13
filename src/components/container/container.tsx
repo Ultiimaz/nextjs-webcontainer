@@ -29,7 +29,7 @@ export default function Container() {
   const [isDarkMode, setIsDarkMode] = useState(true)
   const [loadingState, setLoadingState] = useState<LoadingState>('booting');
   const [webcontainerInstance, setWebcontainerInstance] = useState<WebContainer | null>(null);
-  const [selectedFile, setSelectedFile] = useState<string>('src/app/page.tsx');
+  const [selectedFile, setSelectedFile] = useState<string>('app/[[...slug]]/page.tsx');
   const hasBooted = useRef(false)
 
   useEffect(() => {
@@ -41,9 +41,11 @@ export default function Container() {
 
       if (!textareaRef.current || !iframeRef.current || !terminalRef.current) return
 
-      const indexContent = (files.src as { directory: { app: { directory: { [key: string]: { file: { contents: string } } } } } })
-        .directory.app.directory['page.tsx'].file.contents
-        textareaRef.current.value = indexContent
+      // Load the BlocksWeb dynamic page component as the default file
+      const dynamicPageContent = (files as any)?.app?.directory?.['[[...slug]]']?.directory?.['page.tsx']?.file?.contents;
+      if (dynamicPageContent && textareaRef.current) {
+        textareaRef.current.value = dynamicPageContent;
+      }
       }
 
     initializeEnvironment()
